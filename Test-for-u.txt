@@ -61,37 +61,6 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
--- Toggle accent colors
-local ToggleStyles = {
-    Bhop = { Accent = Color3.fromRGB(80, 170, 255) },
-    ["Front Jump"] = { Accent = Color3.fromRGB(80, 170, 255) },
-    ["Inf Slide"] = { Accent = Color3.fromRGB(80, 170, 255) },
-    ["Lag Switch"] = { Accent = Color3.fromRGB(80, 170, 255) },
-    ["Auto Carry"] = { Accent = Color3.fromRGB(80, 170, 255) },
-    ["Auto Money Farm"] = { Accent = Color3.fromRGB(80, 170, 255) }
-}
-
-local function styleToggle(toggleButton, featureName, state)
-    local accent = ToggleStyles[featureName] and ToggleStyles[featureName].Accent or Color3.fromRGB(80, 170, 255)
-    toggleButton.BackgroundColor3 = state and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(40, 40, 60)
-    toggleButton.BackgroundTransparency = 0.25
-    toggleButton.TextColor3 = state and accent or Color3.fromRGB(150, 150, 200)
-    if not toggleButton:FindFirstChild("UICorner") then
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 8)
-        corner.Parent = toggleButton
-    end
-    if not toggleButton:FindFirstChild("UIStroke") then
-        local stroke = Instance.new("UIStroke")
-        stroke.Thickness = 1.5
-        stroke.Transparency = 0.3
-        stroke.Color = state and accent or Color3.fromRGB(70, 70, 110)
-        stroke.Parent = toggleButton
-    else
-        toggleButton.UIStroke.Color = state and accent or Color3.fromRGB(70, 70, 110)
-    end
-end
-
 getgenv().FeatureStates = {
     SelfReviveMethod = "Spawnpoint",
     AutoSelfRevive = false,
