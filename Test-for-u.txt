@@ -2053,7 +2053,7 @@ local function startHighlightLoop()
 end
 
 -- Example: integrate into WindUI tab (replace Tab with your Test tab variable)
-Tab:Toggle({
+EspTab:Toggle({
     Title = "Highlight Players",
     Value = getgenv().FeatureStates.HighlightPlayers,
     Callback = function(state)
