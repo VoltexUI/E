@@ -61,6 +61,37 @@ local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Camera = workspace.CurrentCamera
 
+-- Toggle accent colors
+local ToggleStyles = {
+    Bhop = { Accent = Color3.fromRGB(80, 170, 255) },
+    ["Front Jump"] = { Accent = Color3.fromRGB(80, 170, 255) },
+    ["Inf Slide"] = { Accent = Color3.fromRGB(80, 170, 255) },
+    ["Lag Switch"] = { Accent = Color3.fromRGB(80, 170, 255) },
+    ["Auto Carry"] = { Accent = Color3.fromRGB(80, 170, 255) },
+    ["Auto Money Farm"] = { Accent = Color3.fromRGB(80, 170, 255) }
+}
+
+local function styleToggle(toggleButton, featureName, state)
+    local accent = ToggleStyles[featureName] and ToggleStyles[featureName].Accent or Color3.fromRGB(80, 170, 255)
+    toggleButton.BackgroundColor3 = state and Color3.fromRGB(60, 60, 80) or Color3.fromRGB(40, 40, 60)
+    toggleButton.BackgroundTransparency = 0.25
+    toggleButton.TextColor3 = state and accent or Color3.fromRGB(150, 150, 200)
+    if not toggleButton:FindFirstChild("UICorner") then
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 8)
+        corner.Parent = toggleButton
+    end
+    if not toggleButton:FindFirstChild("UIStroke") then
+        local stroke = Instance.new("UIStroke")
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.3
+        stroke.Color = state and accent or Color3.fromRGB(70, 70, 110)
+        stroke.Parent = toggleButton
+    else
+        toggleButton.UIStroke.Color = state and accent or Color3.fromRGB(70, 70, 110)
+    end
+end
+
 getgenv().FeatureStates = {
     SelfReviveMethod = "Spawnpoint",
     AutoSelfRevive = false,
@@ -1981,65 +2012,79 @@ EspTab:Toggle({
     end
 })
 
-getgenv().tracerThread = nil
-getgenv().tracerLines = {}
+getgenv().FeatureStates = getgenv().FeatureStates or {}
+getgenv().FeatureStates.HighlightPlayers = getgenv().FeatureStates.HighlightPlayers or false
 
-local function cleanupTracers()
-    for _, line in pairs(getgenv().tracerLines) do
-        if line then
-            pcall(function() line:Remove() end)
-        end
+getgenv().highlights = getgenv().highlights or {}
+getgenv().highlightThread = getgenv().highlightThread or nil
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function getHighlight(char)
+    if getgenv().highlights[char] then
+        return getgenv().highlights[char]
     end
-    getgenv().tracerLines = {}
+    local h = Instance.new("Highlight")
+    h.Adornee = char
+    h.FillTransparency = 0.5
+    h.OutlineTransparency = 0
+    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.Parent = char
+    getgenv().highlights[char] = h
+    return h
 end
 
-EspTab:Toggle({
-    Title = "Tracer Downed Players",
-    Value = false,
-    Callback = function(state)
-        getgenv().FeatureStates.TracerDowned = state
-        
-        if getgenv().tracerThread then
-            coroutine.close(getgenv().tracerThread)
-            getgenv().tracerThread = nil
-        end
-        
-        cleanupTracers()
-        
-        if not state then return end
-        
-        getgenv().tracerThread = coroutine.create(function()
-            while getgenv().FeatureStates.TracerDowned do
-                cleanupTracers()
-                
-                local folder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
-                if folder and Camera then
-                    for _, char in ipairs(folder:GetChildren()) do
-                        if not char:IsA("Model") then continue end
-                        if char:GetAttribute("Team") == "Nextbot" then continue end
-                        if char.Name == LocalPlayer.Name then continue end
-                        if char:GetAttribute("Downed") ~= true then continue end
-                        
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if not hrp then continue end
-                        
-                        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                        if onScreen then
-                            local tracer = Drawing.new("Line")
-                            tracer.Color = Color3.fromRGB(255, 60, 60)
-                            tracer.Thickness = 1.5
-                            tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                            tracer.To = Vector2.new(pos.X, pos.Y)
-                            tracer.Visible = true
-                            table.insert(getgenv().tracerLines, tracer)
-                        end
+local function clearHighlights()
+    for _, h in pairs(getgenv().highlights) do
+        if h then pcall(function() h:Destroy() end) end
+    end
+    table.clear(getgenv().highlights)
+end
+
+local function startHighlightLoop()
+    if getgenv().highlightThread then
+        coroutine.close(getgenv().highlightThread)
+        getgenv().highlightThread = nil
+    end
+
+    getgenv().highlightThread = coroutine.create(function()
+        while getgenv().FeatureStates.HighlightPlayers do
+            local folder = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
+            if folder then
+                for _, char in ipairs(folder:GetChildren()) do
+                    if not char:IsA("Model") then continue end
+                    if char.Name == LocalPlayer.Name then continue end
+                    if char:GetAttribute("Team") == "Nextbot" then continue end
+
+                    local isDowned = char:GetAttribute("Downed") == true
+                    local h = getHighlight(char)
+
+                    local color = isDowned and Color3.fromRGB(255,60,60) or Color3.fromRGB(60,255,60)
+
+                    if h.FillColor ~= color then
+                        h.FillColor = color
+                        h.OutlineColor = color
                     end
                 end
-                task.wait(0.1)
             end
-        end)
-        
-        coroutine.resume(getgenv().tracerThread)
+            task.wait(0.2)
+        end
+    end)
+    coroutine.resume(getgenv().highlightThread)
+end
+
+-- Example: integrate into WindUI tab (replace Tab with your Test tab variable)
+Tab:Toggle({
+    Title = "Highlight Players",
+    Value = getgenv().FeatureStates.HighlightPlayers,
+    Callback = function(state)
+        getgenv().FeatureStates.HighlightPlayers = state
+        if state then
+            startHighlightLoop()
+        else
+            clearHighlights()
+        end
     end
 })
 
